@@ -1,4 +1,4 @@
-    agent {label 'ec2'}
+    agent any
     stages{
         stage('Checkout')
         {
@@ -10,7 +10,7 @@
         {
             steps{
                 dir('./samples/dotnetapp') {
-                    sh 'docker build --pull -t dotnetapp:alpine -f Dockerfile.alpine-x64 .'
+                    sh 'sudo docker build --pull -t dotnetapp:alpine -f Dockerfile.alpine-x64 .'
                 }
             }
         }
@@ -18,7 +18,7 @@
         {
             steps{
                 dir('./samples/dotnetapp') {
-                    sh 'docker build --pull --target testrunner -t dotnetapp:test -f Dockerfile.alpine-x64 .'
+                    sh 'sudo docker build --pull --target testrunner -t dotnetapp:test -f Dockerfile.alpine-x64 .'
                 }
             }
         }
@@ -26,9 +26,9 @@
         {
             steps{
                     withCredentials([usernamePassword(credentialsId: 'docker_credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                        sh 'docker login -u eduardofesilva -p '
-                        sh 'docker tag dotnetapp:alpine eduardofesilva/dotnetapp:latest'
-                        sh 'docker push eduardofesilva/dotnetapp:latest'
+                        sh 'sudo docker login -u eduardofesilva -p '
+                        sh 'sudo docker tag dotnetapp:alpine eduardofesilva/dotnetapp:latest'
+                        sh 'sudo docker push eduardofesilva/dotnetapp:latest'
                     }
             }
         }
@@ -42,4 +42,3 @@
     }
     }
 }
-EOL

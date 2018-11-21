@@ -13,13 +13,10 @@
       yum:
         name: git
         state: present
-    #- name: Instalando openssl-libs
-    #  yum:
-    #    name: openssl-libs
-    #    state: present
-    #- name: Instalando dotnetcore
-    #  include_role:
-    #    name: ocha.dotnet-core
+    - name: Instalando docker
+      yum:
+        name: docker
+        state: present
     - name: Atualizando pacotes
       yum:
         name: '*'
@@ -88,34 +85,36 @@
         owner: jenkins
         group: jenkins
 
-    - name: Copying Jenkins credentials
+    - name: Copying Jenkins users
       copy:
         src: /var/lib/jenkins/users
         dest: /var/lib/jenkins
         owner: jenkins
         group: jenkins
 
-    - name: Create .ssh folder
-      file:
-        path: /var/lib/jenkins/.ssh
-        state: directory
-        owner: jenkins
-        group: jenkins
-        mode: 0700
+    - name: Create a 2048-bit SSH key for user jenkins in ~jenkins/.ssh/id_rsa
+      user:
+        name: jenkins
+        generate_ssh_key: yes
+        ssh_key_bits: 2048
+        ssh_key_file: /var/lib/jenkins/.ssh/id_rsa
+    - name: Add the user 'jenkins' with a bash shell, appending the group 'admins' and 'developers' to the user's groups
+      user:
+        name: jenkins
+        shell: /bin/bash
+        groups: docker,wheel
+        append: yes
+    - name: Habilitando o grupo wheel
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%wheel\s'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
 
-    - name: Upload SSH key
-      copy:
-        src: ~/.ssh/id_rsa
-        dest: /var/lib/jenkins/.ssh/id_rsa
-        owner: jenkins
-        group: jenkins
-        mode: 0600
-    #- name: Copying Jenkins credentials
-    #  copy:
-    #    src: /var/lib/jenkins/jobs
-    #    dest: /var/lib/jenkins
-    #    owner: jenkins
-    #    group: jenkins
+    - name: Iniciando o Docker
+      service:
+        name: docker
+        state: started  
 
     - name: Restarting jenkins
       service:

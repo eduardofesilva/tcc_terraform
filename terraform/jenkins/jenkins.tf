@@ -5,7 +5,7 @@ provider "aws" {
 }
 
 resource "aws_instance" "jenkins_master" {
-  ami = "ami-0ff8a91507f77f867"
+  ami = "ami-09479453c5cde9639"
 
   instance_type = "t2.medium"
 
@@ -13,6 +13,12 @@ resource "aws_instance" "jenkins_master" {
     Name    = "jenkins-master"
     owner   = "Eduardo Fonseca"
     projeto = "tcc"
+  }
+
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "80"
+    delete_on_termination = "true"
   }
 
   # We're assuming the subnet and security group have been defined earlier on
@@ -25,6 +31,26 @@ resource "aws_instance" "jenkins_master" {
   # This is where we configure the instance with ansible-playbook
   provisioner "local-exec" {
     command = "sleep 60; ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ec2-user --private-key ~/Desktop/tcc.pem -i '${aws_instance.jenkins_master.public_ip},' --extra-vars '@../../ansible/variables.yml' ../../ansible/jenkins.yml"
+  }
+  provisioner "remote-exec" {
+    inline = ["sudo cat /var/lib/jenkins/.ssh/id_rsa.pub"]
+
+    connection {
+      type        = "ssh"
+      private_key = "${file("~/Desktop/tcc.pem")}"
+      user        = "ec2-user"
+      timeout     = "1m"
+    }
+  }
+  provisioner "remote-exec" {
+    inline = ["sudo cat /var/lib/jenkins/.ssh/id_rsa"]
+
+    connection {
+      type        = "ssh"
+      private_key = "${file("~/Desktop/tcc.pem")}"
+      user        = "ec2-user"
+      timeout     = "1m"
+    }
   }
 }
 
@@ -63,12 +89,12 @@ data "template_file" "jenkinsfile_docker" {
 
 resource "null_resource" "Jenkinsfile" {
   provisioner "local-exec" {
-    command = "cat > Jenkinsfile <<EOL${data.template_file.jenkinsfile.rendered}EOL"
+    command = "cat > Jenkinsfile << ${data.template_file.jenkinsfile.rendered}"
   }
 }
 
 resource "null_resource" "Jenkinsfile_Docker" {
   provisioner "local-exec" {
-    command = "cat > Jenkinsfile.Docker <<EOL${data.template_file.jenkinsfile_docker.rendered}EOL"
+    command = "cat > Jenkinsfile.Docker << ${data.template_file.jenkinsfile_docker.rendered}"
   }
 }

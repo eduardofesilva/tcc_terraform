@@ -15,6 +15,12 @@ resource "aws_instance" "nexus" {
     projeto = "tcc"
   }
 
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "80"
+    delete_on_termination = "true"
+  }
+
   # We're assuming the subnet and security group have been defined earlier on
 
   subnet_id                   = "subnet-1435f538"
