@@ -1,0 +1,44 @@
+agent any
+    stages{
+        stage('Checkout'){
+            steps{
+                //cleanWs()
+                git credentialsId: 'github', url: 'git@github.com:dotnet/samples.git'
+            }
+        }
+        stage('Build'){
+            steps{
+                sh 'cd /{project_test_path} && dotnet clean && dotnet restore && dotnet build'
+            }
+        }
+        stage('Test') {
+          steps{
+            sh 'cd /{project_test_path} && dotnet test'
+          }
+        }
+        stage('Run') {
+          steps{
+            sh 'dotnet run --project /{project_path}'
+          }
+        }
+        stage('Release'){
+            steps{
+                sh 'cd /{project_test_path} && dotnet publish -c Release -o published'
+            }
+        }
+        stage('Deploy'){
+            steps{
+                sh 'cd /{project_path}/bin/Release/netcoreapp2.1/ && dotnet NewTypes.dll'
+            }
+        }
+    }
+    post{
+        success{
+            slackSend baseUrl: 'https://eduardofonseca.slack.com/services/hooks/jenkins-ci/', botUser: true, channel: 'general', color: 'good', failOnError: true, message: "Build  # finalizado com sucesso", tokenCredentialId: 'slack'
+        }
+        failure{
+            slackSend baseUrl: 'https://eduardofonseca.slack.com/services/hooks/jenkins-ci/', botUser: true, channel: 'general', color: 'danger', failOnError: true, message: "Build  # falhou", tokenCredentialId: 'slack'
+    }
+    }
+}
+EOL

@@ -1,0 +1,45 @@
+    agent {label 'ec2'}
+    stages{
+        stage('Checkout')
+        {
+            steps{
+                git credentialsId: 'github', url: 'git@github.com:dotnet/dotnet-docker.git'
+            }
+        }
+        stage('Build')
+        {
+            steps{
+                dir('./samples/dotnetapp') {
+                    sh 'docker build --pull -t dotnetapp:alpine -f Dockerfile.alpine-x64 .'
+                }
+            }
+        }
+        stage('Test')
+        {
+            steps{
+                dir('./samples/dotnetapp') {
+                    sh 'docker build --pull --target testrunner -t dotnetapp:test -f Dockerfile.alpine-x64 .'
+                }
+            }
+        }
+        stage('Publish')
+        {
+            steps{
+                    withCredentials([usernamePassword(credentialsId: 'docker_credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                        sh 'docker login -u eduardofesilva -p '
+                        sh 'docker tag dotnetapp:alpine eduardofesilva/dotnetapp:latest'
+                        sh 'docker push eduardofesilva/dotnetapp:latest'
+                    }
+            }
+        }
+    }
+    post{
+        success{
+            slackSend baseUrl: 'https://eduardofonseca.slack.com/services/hooks/jenkins-ci/', botUser: true, channel: 'general', color: 'good', failOnError: true, message: "Build  # finalizado com sucesso", tokenCredentialId: 'slack'
+        }
+        failure{
+            slackSend baseUrl: 'https://eduardofonseca.slack.com/services/hooks/jenkins-ci/', botUser: true, channel: 'general', color: 'danger', failOnError: true, message: "Build  # falhou", tokenCredentialId: 'slack'
+    }
+    }
+}
+EOL

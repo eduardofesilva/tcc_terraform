@@ -1,0 +1,123 @@
+- hosts: all
+  become: true
+  pre_tasks:
+    - name: Removendo java 1.7
+      yum:
+        name: java-1.7.0-openjdk
+        state: removed
+    - name: Instalando java 1.8
+      yum:
+        name: java-1.8.0-openjdk
+        state: present
+    - name: Instalando git
+      yum:
+        name: git
+        state: present
+    #- name: Instalando openssl-libs
+    #  yum:
+    #    name: openssl-libs
+    #    state: present
+    #- name: Instalando dotnetcore
+    #  include_role:
+    #    name: ocha.dotnet-core
+    - name: Atualizando pacotes
+      yum:
+        name: '*'
+        state: latest
+  tasks:
+  - name: install java
+    include_role:
+      name: geerlingguy.java
+      private: yes
+    vars:
+      - __java_packages: ['java-1.8.0-openjdk-1.8.0.161']
+
+  - name: install jenkins master
+    include_role:
+      name: geerlingguy.jenkins
+      private: yes
+    vars:
+      - jenkins_hostname: localhost
+      - jenkins_package_state: latest
+      - jenkins_http_port: 8080
+      - jenkins_admin_username: admin
+      - jenkins_admin_password: admin
+      - jenkins_version: "2.138"
+      - jenkins_java_options: "-Djenkins.install.runSetupWizard=false -Dhudson.model.User.allowNonExistentUserToLogin=true"
+      - jenkins_plugins:
+          - git
+          - ec2
+          - s3
+          - amazon-ecs
+          - maven-plugin
+          - aws-bucket-credentials
+          - aws-credentials
+          - amazon-ecr
+          - docker-plugin
+          - cloudbees-folder
+          - jdk-tool
+          - script-security
+          - gradle
+          - docker-commons
+          - ansible
+          - msbuild
+          - mstest
+          - terraform
+          - docker-plugin
+          - docker-build-publish
+          - docker-slaves
+          - scalable-amazon-ecs
+          - aws-sqs
+          - slack
+          - workflow-aggregator
+      - jenkins_plugins_install_dependencies: true
+      - jenkins_plugins_state: present
+
+  post_tasks:
+    - name: Copying Jenkins configurations
+      copy:
+        src: /var/lib/jenkins/config.xml
+        dest: /var/lib/jenkins/config.xml
+        owner: jenkins
+        group: jenkins
+
+    - name: Copying Jenkins credentials
+      copy:
+        src: /var/lib/jenkins/credentials.xml
+        dest: /var/lib/jenkins/credentials.xml
+        owner: jenkins
+        group: jenkins
+
+    - name: Copying Jenkins credentials
+      copy:
+        src: /var/lib/jenkins/users
+        dest: /var/lib/jenkins
+        owner: jenkins
+        group: jenkins
+
+    - name: Create .ssh folder
+      file:
+        path: /var/lib/jenkins/.ssh
+        state: directory
+        owner: jenkins
+        group: jenkins
+        mode: 0700
+
+    - name: Upload SSH key
+      copy:
+        src: ~/.ssh/id_rsa
+        dest: /var/lib/jenkins/.ssh/id_rsa
+        owner: jenkins
+        group: jenkins
+        mode: 0600
+    #- name: Copying Jenkins credentials
+    #  copy:
+    #    src: /var/lib/jenkins/jobs
+    #    dest: /var/lib/jenkins
+    #    owner: jenkins
+    #    group: jenkins
+
+    - name: Restarting jenkins
+      service:
+        name: jenkins
+        state: restarted

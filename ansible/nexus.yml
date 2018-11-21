@@ -1,0 +1,85 @@
+---
+- name: Nexus
+  hosts: all
+  become: yes
+  pre_tasks:
+    - name: Install java
+      include_role:
+        name: geerlingguy.java
+        private: yes
+      vars:
+        - __java_packages: ['java-1.8.0-openjdk-1.8.0.161']
+
+  vars:
+    nexus_timezone: 'America/Sao_Paulo'
+    nexus_admin_password: "tcceduardo2018"
+    httpd_server_name: 'nexus.vm'
+    nexus_privileges:
+      - name: all-repos-read
+        description: 'Read & Browse access to all repos'
+        repository: '*'
+        actions:
+          - read
+          - browse
+      - name: company-project-deploy
+        description: 'Deployments to company-project'
+        repository: company-project
+        actions:
+          - add
+          - edit
+    nexus_roles:
+      - id: Developpers # maps to the LDAP group
+        name: developers
+        description: All developers
+        privileges:
+          - nx-search-read
+          - all-repos-read
+          - company-project-deploy
+        roles: []
+    nexus_local_users:
+      - username: jenkins # used as key to update
+        first_name: Jenkins
+        last_name: CI
+        email: support@company.com
+        password: "jenkins"
+        roles:
+          - Developpers # role ID here
+    nexus_blobstores:
+      - name: company-artifacts
+        path: /var/nexus/blobs/company-artifacts
+    nexus_scheduled_tasks:
+      - name: compact-blobstore
+        cron: '0 0 22 * * ?'
+        typeId: blobstore.compact
+        taskProperties:
+          blobstoreName: 'company-artifacts'
+    nexus_repos_maven_proxy:
+      - name: central
+        remote_url: 'https://repo1.maven.org/maven2/'
+        layout_policy: permissive
+      - name: jboss
+        remote_url: 'https://repository.jboss.org/nexus/content/groups/public-jboss/'
+      - name: vaadin-addons
+        remote_url: 'https://maven.vaadin.com/vaadin-addons/'
+      - name: jaspersoft
+        remote_url: 'https://jaspersoft.artifactoryonline.com/jaspersoft/jaspersoft-repo/'
+        version_policy: mixed
+    nexus_repos_maven_hosted:
+      - name: company-project
+        version_policy: mixed
+        write_policy: allow
+        blob_store: company-artifacts
+    nexus_repos_maven_group:
+      - name: public
+        member_repos:
+          - central
+          - jboss
+          - vaadin-addons
+          - jaspersoft
+
+  roles:
+    # Debian/Ubuntu only
+    # - { role: geerlingguy.apache, apache_create_vhosts: no, apache_mods_enabled: ["proxy_http.load", "headers.load"], apache_remove_default_vhost: true, tags: ["geerlingguy.apache"] }
+    # RedHat/CentOS only
+    - { role: geerlingguy.apache, apache_create_vhosts: no, apache_remove_default_vhost: true, tags: ["geerlingguy.apache"] }
+    - { role: ansible-ThoTeam.nexus3-oss, tags: ['savoirfairelinux.nexus3-oss'] }

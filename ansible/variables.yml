@@ -1,0 +1,5 @@
+plugins:
+- git
+- s3
+- ec2
+- amazon-ecs
